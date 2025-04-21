@@ -5,16 +5,13 @@
 [![bundle size](https://img.shields.io/bundlephobia/minzip/use-funnel)](https://bundlephobia.com/package/use-funnel)
 [![types](https://img.shields.io/npm/types/use-funnel.svg)](https://www.npmjs.com/package/use-funnel)
 
-A lightweight React hook to make HTML table columns sticky on both left and right sides. Great for data tables and dashboards.
+Make funnel eazy
 
 > 🎬 **[Live Demo](https://chinmay.annadate.in/demos/use-funnel)**
 
 ## ✨ Features
 
-- Sticky left and/or right columns
-- Automatically handles offsets
-- Customizable shadow, z-index, and more
-- Compatible with any third party UI Library
+- Can handle if one of the values in the funnel (not first one) is smaller than the subsequent
 
 ## 📦 Installation
 
@@ -23,83 +20,73 @@ npm install use-funnel
 ```
 
 ## 🚀 Usage
-Pass tableRef directly to the table element
 
 ```typescript
-const tableRef = useRef<HTMLTableElement>(null);
-useStickyColumns(tableRef, { numLeftSticky: 2, numRightSticky: 1 });
+const INITIAL_VALUES = [200, 175, 50, 100];
+const funnelData = useFunnel(
+    INITIAL_VALUES.map((val) => new FunnelInput({ value: val }))
+);
+
+<div className="grid grid-cols-[auto_1px_auto_1px_auto_1px_auto]">
+  {funnelData.map((data, index) => (
+    <FunnelStep
+      key={index}
+      index={index}
+      isLast={index === funnelData.length - 1}
+      dataUnit={data}
+    />
+  ))}
+</div>
 ```
 
-Full example
-```css
-.striped-table {
-  tr:nth-child(odd) td {
-    background-color: white;
-  }
-  tr:nth-child(even) td {
-    background-color: #fafbfc;
-  }
-}
-```
-
+Example for FunnelStep
 ```typescript
-import ExampleTable from "@/components/examples/ExampleTable";
-import { useRef, useState } from "react";
-import useStickyColumns from "use-funnel";
+import { FunnelInput } from "use-funnel";
+import { FUNNEL_COLORS } from "../_constants/funnel";
+import { motion } from "framer-motion";
 
-const Page = () => {
-  const tableRef = useRef<HTMLTableElement | null>(null);
-
-  const [numLeftSticky, setNumLeftSticky] = useState(2);
-  const [numRightSticky, setNumRightSticky] = useState(3);
-
-  useStickyColumns(tableRef, {
-    numLeftSticky,
-    numRightSticky,
-    stickyZIndex: 10, # default
-    leftShadow: "inset -2px 0 0 0 rgba(0, 0, 0, 0.1)", # default
-    rightShadow: "inset 2px 0 0 0 rgba(0, 0, 0, 0.1)",
-    deps: [], # any dependencies to reload the table
-  });
-
+const FunnelStep = ({
+  index,
+  isLast,
+  dataUnit,
+}: {
+  index: number;
+  isLast: boolean;
+  dataUnit: FunnelInput;
+}) => {
   return (
-    <div className="m-4 md:m-20 space-y-4">
-      {/* Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          Left Sticky Columns:
-          <input
-            type="number"
-            value={numLeftSticky}
-            onChange={(e) => setNumLeftSticky(Number(e.target.value))}
-            min={1}
-            className="rounded border px-2 py-1 w-20"
-          />
-        </label>
+    <>
+      <div className="relative h-[145px]">
+        <motion.div
+          className={`h-full w-full ${dataUnit.isCompensated() ? "opacity-50" : ""}`}
+          style={{
+            backgroundColor: FUNNEL_COLORS[index],
+          }}
+          initial={{
+            clipPath: "polygon(50% 0%, 50% 0%, 50% 100%, 50% 100%)",
+          }}
+          animate={{ clipPath: dataUnit.polygon }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+        />
 
-        <label className="flex items-center gap-2 text-sm">
-          Right Sticky Columns:
-          <input
-            type="number"
-            value={numRightSticky}
-            onChange={(e) => setNumRightSticky(Number(e.target.value))}
-            min={1}
-            className="rounded border px-2 py-1 w-20"
+        {dataUnit.isCompensated() && dataUnit.originalValue !== 0 && (
+          <motion.div
+            className="absolute top-0 h-full w-full"
+            style={{
+              backgroundColor: FUNNEL_COLORS[index],
+            }}
+            initial={{
+              clipPath: "polygon(50% 0%, 50% 0%, 50% 100%, 50% 100%)",
+            }}
+            animate={{ clipPath: dataUnit.originalPolygon }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
           />
-        </label>
+        )}
       </div>
-
-      {/* Table Container */}
-      <div className="max-h-[600px] overflow-hidden rounded-xl border">
-        <div className="flex overflow-auto next-ui-table-thead striped-table max-h-[600px]">
-          <div className="w-0 grow">
-            <ExampleTable tableRef={tableRef} />
-          </div>
-        </div>
-      </div>
-    </div>
+      {!isLast && <div className="bg-slate-200" />}
+    </>
   );
 };
 
-export default Page;
+export default FunnelStep;
 ```
