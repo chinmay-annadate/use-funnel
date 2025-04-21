@@ -4,7 +4,6 @@ export class FunnelInput {
   polygon: string;
 
   originalValue: number;
-  orignalRelativePercentage: number;
   originalPolygon: string;
 
   constructor(params: Partial<FunnelInput>) {
@@ -12,7 +11,6 @@ export class FunnelInput {
     this.relativePercentage = params?.relativePercentage ?? 0;
     this.polygon = params?.polygon ?? "";
 
-    this.orignalRelativePercentage = params?.orignalRelativePercentage ?? 0;
     this.originalValue = params?.originalValue ?? this.value;
     this.originalPolygon = params?.originalPolygon ?? this.polygon;
   }

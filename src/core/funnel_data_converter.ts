@@ -19,72 +19,64 @@ export class FunnelDataConverter {
       if (this.data[i].value < this.data[i + 1].value) {
         if (i > 0) {
           this.data[i].value = Math.ceil(
-            (this.data[i - 1].value + this.data[i + 1].value) / 2
+            (this.data[i - 1].value + this.data[i + 1].value) / 2,
           );
         }
       }
     }
   }
 
-  private constructPolygon(index: number, original: boolean) {
-    let nextItem, thisItem, rightTop, leftTop;
-    if (index < this.data.length - 1) {
-      nextItem = this.data[index + 1];
-      thisItem = this.data[index];
+  private constructPolygon(index: number) {
+    const thisItem = this.data[index];
+    const nextItem = this.data[index + 1];
 
-      rightTop =
-        (100 -
-          (original
-            ? nextItem.orignalRelativePercentage
-            : nextItem.relativePercentage)) /
-        2;
-      leftTop =
-        (100 -
-          (original
-            ? thisItem.orignalRelativePercentage
-            : thisItem.relativePercentage)) /
-        2;
-      return `polygon(
-              0 ${leftTop}%,
-              100% ${rightTop}%,
-              100% ${
-                rightTop +
-                (original
-                  ? nextItem.orignalRelativePercentage
-                  : nextItem.relativePercentage)
-              }%,
-              0 ${
-                leftTop +
-                (original
-                  ? thisItem.orignalRelativePercentage
-                  : thisItem.relativePercentage)
-              }%
-            )`;
-    } else {
-      thisItem = this.data[index];
-      leftTop =
-        (100 -
-          (original
-            ? thisItem.orignalRelativePercentage
-            : thisItem.relativePercentage)) /
-        2;
-      return `polygon(
-                  0 ${leftTop}%,
-                  100% ${leftTop}%,
-                  100% ${
-                    leftTop +
-                    (original
-                      ? thisItem.orignalRelativePercentage
-                      : thisItem.relativePercentage)
-                  }%,
-                  0 ${
-                    leftTop +
-                    (original
-                      ? thisItem.orignalRelativePercentage
-                      : thisItem.relativePercentage)
-                  }%
-                )`;
-    }
+    const thisPortion = (thisItem.value / this.maxValue) * 100;
+    const nextPortion = nextItem
+      ? (nextItem.value / this.maxValue) * 100
+      : thisPortion;
+
+    const leftOffset = (100 - thisPortion) / 2;
+    const rightOffset = (100 - nextPortion) / 2;
+
+    const topLeft = leftOffset;
+    const topRight = rightOffset;
+    const bottomRight = rightOffset + nextPortion;
+    const bottomLeft = leftOffset + thisPortion;
+
+    return `polygon(
+      0 ${topLeft}%,
+      100% ${topRight}%,
+      100% ${bottomRight}%,
+      0 ${bottomLeft}%
+    )`;
+  }
+
+  private constructPartialPolygon(index: number) {
+    const thisItem = this.data[index];
+    const nextItem = this.data[index + 1];
+
+    const thisPortion = (thisItem.value / this.maxValue) * 100;
+    const nextPortion = nextItem
+      ? (nextItem.value / this.maxValue) * 100
+      : thisPortion;
+
+    const leftOffset = (100 - thisPortion) / 2;
+    const rightOffset = (100 - nextPortion) / 2;
+
+    const originalThisPortion =
+      (thisPortion / thisItem.value) * thisItem.originalValue;
+
+    const topLeft = 100 - originalThisPortion - leftOffset;
+    const topRight = 100 - originalThisPortion - rightOffset;
+    const bottomRight = rightOffset + nextPortion;
+    const bottomLeft = leftOffset + thisPortion;
+
+    return `polygon(
+      0 ${topLeft}%,
+      100% ${topRight}%,
+      100% ${bottomRight}%,
+      0 ${bottomLeft}%
+    )`;
   }
 
   private assignRelativePercentages() {
@@ -92,18 +84,20 @@ export class FunnelDataConverter {
       return new FunnelInput({
         ...item,
         relativePercentage: (100 / this.maxValue) * item.value,
-        orignalRelativePercentage:
-          (100 / this.maxOrignalValue) * item.originalValue,
       });
     });
   }
 
   private constructPolygons() {
     this.data = this.data.map((item, index) => {
+      const polygon = this.constructPolygon(index);
+
       return new FunnelInput({
         ...item,
-        polygon: this.constructPolygon(index, false),
-        originalPolygon: this.constructPolygon(index, true),
+        polygon,
+        originalPolygon: item.isCompensated()
+          ? this.constructPartialPolygon(index)
+          : polygon,
       });
     });
   }
